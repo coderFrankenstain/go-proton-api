@@ -3,7 +3,6 @@ package proton
 import (
 	"context"
 	"io"
-
 	"github.com/go-resty/resty/v2"
 )
 
@@ -39,4 +38,15 @@ func (c *Client) UploadBlock(ctx context.Context, bareURL, token string, block i
 			SetMultipartField("Block", "blob", "application/octet-stream", block).
 			Post(bareURL)
 	})
+}
+
+func (c *Client) Verification(ctx context.Context, shareID string, linkID string, revision string) (VerificationRes, error) {
+	var res VerificationRes
+
+	if err := c.do(ctx, func(r *resty.Request) (*resty.Response, error) {
+		return r.SetResult(&res).Get("/drive/shares/" + shareID + "/links/" + linkID + "/revisions/" + revision + "/verification")
+	}); err != nil {
+		return res, err
+	}
+	return res, nil
 }

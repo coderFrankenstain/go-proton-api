@@ -23,14 +23,25 @@ type BlockUploadReq struct {
 	BlockList []BlockUploadInfo
 }
 
+type Verifier struct {
+	Token string
+}
+
 type BlockUploadInfo struct {
 	Index        int
 	Size         int64
 	EncSignature string
 	Hash         string
+	Verifier     Verifier
 }
 
 type BlockUploadLink struct {
 	Token   string
 	BareURL string
+}
+
+type VerificationRes struct {
+	VerificationCode string `json:"VerificationCode"`
+	ContentKeyPacket string `json:"ContentKeyPacket"`
+	Code             int    `json:"Code"`
 }
