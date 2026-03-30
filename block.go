@@ -3,6 +3,8 @@ package proton
 import (
 	"context"
 	"io"
+	"time"
+
 	"github.com/go-resty/resty/v2"
 )
 
@@ -32,7 +34,13 @@ func (c *Client) RequestBlockUpload(ctx context.Context, req BlockUploadReq) ([]
 }
 
 func (c *Client) UploadBlock(ctx context.Context, bareURL, token string, block io.Reader) error {
-	return c.do(ctx, func(r *resty.Request) (*resty.Response, error) {
+	// Per-block upload timeout: 5 minutes is a reasonable upper bound for a 4MB block
+	// This prevents a single hung connection from blocking the entire upload pipeline
+	// and from holding authLock.RLock() indefinitely (which would block auth refresh for all requests)
+	uploadCtx, cancel := context.WithTimeout(ctx, 5*time.Minute)
+	defer cancel()
+
+	return c.do(uploadCtx, func(r *resty.Request) (*resty.Response, error) {
 		return r.
 			SetHeader("pm-storage-token", token).
 			SetMultipartField("Block", "blob", "application/octet-stream", block).
