@@ -179,6 +179,15 @@ func catchTooManyRequests(res *resty.Response, _ error) bool {
 	return res.StatusCode() == http.StatusTooManyRequests || res.StatusCode() == http.StatusServiceUnavailable
 }
 
+// catchBadGateway retries on 502 Bad Gateway and 504 Gateway Timeout.
+// Proton's storage servers (fra-storage.proton.me) return 502/504 transiently
+// when a storage backend node is temporarily unavailable. Without this retry,
+// any block upload to that endpoint fails permanently, which then triggers the
+// errChan goroutine leak and causes the entire upload to stall at 0 B/s.
+func catchBadGateway(res *resty.Response, _ error) bool {
+	return res.StatusCode() == http.StatusBadGateway || res.StatusCode() == http.StatusGatewayTimeout
+}
+
 func catchDialError(res *resty.Response, err error) bool {
 	return res.RawResponse == nil
 }

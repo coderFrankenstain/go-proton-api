@@ -95,6 +95,7 @@ func (builder *managerBuilder) build() *Manager {
 	m.rc.SetRetryCount(builder.retryCount)
 	m.rc.SetRetryMaxWaitTime(time.Minute)
 	m.rc.AddRetryCondition(catchTooManyRequests)
+	m.rc.AddRetryCondition(catchBadGateway)
 	m.rc.AddRetryCondition(catchDialError)
 	m.rc.AddRetryCondition(catchDropError)
 	m.rc.SetRetryAfter(catchRetryAfter)
