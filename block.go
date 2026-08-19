@@ -1,8 +1,10 @@
 package proton
 
 import (
+	"bytes"
 	"context"
 	"io"
+	"mime/multipart"
 	"time"
 
 	"github.com/go-resty/resty/v2"
@@ -40,10 +42,29 @@ func (c *Client) UploadBlock(ctx context.Context, bareURL, token string, block i
 	uploadCtx, cancel := context.WithTimeout(ctx, 5*time.Minute)
 	defer cancel()
 
+	// Pre-encode the multipart body into memory so retries replay the complete
+	// body. Handing the raw reader to SetMultipartField means any resty retry
+	// after a network error (e.g. timeout awaiting response headers) re-sends
+	// an exhausted reader, which the server rejects with
+	// 400 "Upload file empty (Code=2003)".
+	var buf bytes.Buffer
+	w := multipart.NewWriter(&buf)
+	fw, err := w.CreateFormFile("Block", "blob")
+	if err != nil {
+		return err
+	}
+	if _, err := io.Copy(fw, block); err != nil {
+		return err
+	}
+	if err := w.Close(); err != nil {
+		return err
+	}
+
 	return c.do(uploadCtx, func(r *resty.Request) (*resty.Response, error) {
 		return r.
 			SetHeader("pm-storage-token", token).
-			SetMultipartField("Block", "blob", "application/octet-stream", block).
+			SetHeader("Content-Type", w.FormDataContentType()).
+			SetBody(buf.Bytes()).
 			Post(bareURL)
 	})
 }
