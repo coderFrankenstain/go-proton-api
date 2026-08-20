@@ -180,7 +180,14 @@ func (commitRevisionReq *CommitRevisionReq) SetEncXAttrString(addrKR, nodeKR *cr
 		return err
 	}
 
-	encXattr, err := nodeKR.Encrypt(crypto.NewPlainMessage(jsonByteArr), addrKR)
+	// Encrypt with zlib compression, matching the official clients
+	// (WebClients encryptExtendedAttributes passes compress: true). The
+	// server caps the XAttr field at 65535 characters; BlockSizes of a
+	// large file (~10k entries for a 42GB file, one per 4MB block) blows
+	// past that uncompressed, and the commit fails with
+	// "This value is too long" (Code=2024). The highly repetitive JSON
+	// compresses to a few KB regardless of file size.
+	encXattr, err := nodeKR.EncryptWithCompression(crypto.NewPlainMessage(jsonByteArr), addrKR)
 	if err != nil {
 		return err
 	}
